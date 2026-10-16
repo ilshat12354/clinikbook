@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import User, get_db, settings
 
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
 
 class Role(str, Enum):
     patient = "patient"
@@ -95,9 +95,11 @@ def create_token(subject: str, role: str) -> str:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация")
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
